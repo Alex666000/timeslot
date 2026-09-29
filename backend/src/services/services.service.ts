@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 
 type ServiceItem = {
   id: number;
@@ -28,5 +28,15 @@ export class ServicesService {
 
   getAll(): ServiceItem[] {
     return this.services;
+  }
+
+  getById(id: number): ServiceItem {
+    const service = this.services.find((service) => service.id === id);
+
+    if (!service) {
+      throw new NotFoundException(`Service with id ${id} not found`);
+    }
+
+    return service;
   }
 }
