@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { CreateServiceDto } from './dto/create-service.dto.js';
+import { UpdateServiceDto } from './dto/update-service.dto.js';
 
 type ServiceItem = {
   id: number;
@@ -8,6 +10,8 @@ type ServiceItem = {
 
 @Injectable()
 export class ServicesService {
+  private nextId = 4;
+
   private readonly services: ServiceItem[] = [
     {
       id: 1,
@@ -26,6 +30,7 @@ export class ServicesService {
     },
   ];
 
+  // GET
   getAll(): ServiceItem[] {
     return this.services;
   }
@@ -36,6 +41,27 @@ export class ServicesService {
     if (!service) {
       throw new NotFoundException(`Service with id ${id} not found`);
     }
+
+    return service;
+  }
+
+  // POST
+  create(dto: CreateServiceDto): ServiceItem {
+    const service: ServiceItem = {
+      id: this.nextId++,
+      name: dto.name,
+      price: dto.price,
+    };
+    this.services.push(service);
+
+    return service;
+  }
+
+  // PATCH
+  update(id: number, dto: UpdateServiceDto): ServiceItem {
+    const service = this.getById(id);
+
+    Object.assign(service, dto);
 
     return service;
   }
