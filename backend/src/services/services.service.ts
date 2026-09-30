@@ -2,20 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateServiceDto } from './dto/create-service.dto.js';
 import { UpdateServiceDto } from './dto/update-service.dto.js';
 import { GetServicesQueryDto, ServiceSortBy, SortOrder } from './dto/get-services-query.dto.js';
-
-type ServiceItem = {
-  id: number;
-  name: string;
-  price: number;
-};
-
-type GetServicesResult = {
-  items: ServiceItem[];
-  total: number;
-  page: number;
-  pageSize: number;
-  pagesCount: number;
-};
+import type { GetServicesResult, ServiceItem } from './services.types.js';
 
 @Injectable()
 export class ServicesService {
