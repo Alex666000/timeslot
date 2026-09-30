@@ -1,7 +1,18 @@
-import {Body, Controller, Get, Param, ParseIntPipe, Patch, Post} from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
 import { ServicesService } from './services.service.js';
 import { CreateServiceDto } from './dto/create-service.dto.js';
-import {UpdateServiceDto} from "./dto/update-service.dto.js";
+import { UpdateServiceDto } from './dto/update-service.dto.js';
 
 @Controller('services')
 export class ServicesController {
@@ -28,5 +39,12 @@ export class ServicesController {
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateServiceDto) {
     return this.servicesService.update(id, dto);
+  }
+
+  // Delete
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  remove(@Param('id', ParseIntPipe) id: number): void {
+    this.servicesService.remove(id);
   }
 }

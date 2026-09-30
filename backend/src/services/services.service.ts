@@ -65,4 +65,15 @@ export class ServicesService {
 
     return service;
   }
+
+  // DELETE
+  remove(id: number): void {
+    const index = this.services.findIndex((service) => service.id === id);
+
+    if (index === -1) {
+      throw new NotFoundException(`Service with id ${id} not found`);
+    }
+
+    this.services.splice(index, 1);
+  }
 }
