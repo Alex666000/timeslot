@@ -31,8 +31,15 @@ export class ServicesService {
   ];
 
   // GET
-  getAll(): ServiceItem[] {
-    return this.services;
+  getAll(search?: string): ServiceItem[] {
+    if (!search) {
+      return this.services;
+    }
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return this.services.filter((service) =>
+      service.name.toLowerCase().includes(normalizedSearch),
+    );
   }
 
   getById(id: number): ServiceItem {

@@ -9,6 +9,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { ServicesService } from './services.service.js';
 import { CreateServiceDto } from './dto/create-service.dto.js';
@@ -20,8 +21,8 @@ export class ServicesController {
 
   // Get
   @Get()
-  getAll() {
-    return this.servicesService.getAll();
+  getAll(@Query('search') search?: string) {
+    return this.servicesService.getAll(search);
   }
 
   @Get(':id')
