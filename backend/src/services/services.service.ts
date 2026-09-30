@@ -9,6 +9,14 @@ type ServiceItem = {
   price: number;
 };
 
+type GetServicesResult = {
+  items: ServiceItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pagesCount: number;
+};
+
 @Injectable()
 export class ServicesService {
   private nextId = 4;
@@ -32,8 +40,16 @@ export class ServicesService {
   ];
 
   // GET
-  getAll(query: GetServicesQueryDto): ServiceItem[] {
-    const { search, minPrice, maxPrice, sortBy, sortOrder = SortOrder.Asc } = query;
+  getAll(query: GetServicesQueryDto): GetServicesResult {
+    const {
+      search,
+      minPrice,
+      maxPrice,
+      sortBy,
+      sortOrder = SortOrder.Asc,
+      page = 1,
+      pageSize = 10,
+    } = query;
 
     const normalizedSearch = search?.trim().toLowerCase();
 
@@ -53,23 +69,37 @@ export class ServicesService {
       return true;
     });
 
-    if (!sortBy) {
-      return filteredServices;
-    }
+    // sort
+    const sortedServices = sortBy
+      ? filteredServices.sort((a, b) => {
+          let comparison = 0;
 
-    return filteredServices.sort((a, b) => {
-      let comparison = 0;
+          if (sortBy === ServiceSortBy.Price) {
+            comparison = a.price - b.price;
+          }
 
-      if (sortBy === ServiceSortBy.Price) {
-        comparison = a.price - b.price;
-      }
+          if (sortBy === ServiceSortBy.Name) {
+            comparison = a.name.localeCompare(b.name, 'ru');
+          }
 
-      if (sortBy === ServiceSortBy.Name) {
-        comparison = a.name.localeCompare(b.name, 'ru');
-      }
+          return sortOrder === SortOrder.Desc ? -comparison : comparison;
+        })
+      : filteredServices;
 
-      return sortOrder === SortOrder.Desc ? -comparison : comparison;
-    });
+    // pagination
+    const total = sortedServices.length;
+    const offset = (page - 1) * pageSize;
+    const items = sortedServices.slice(offset, offset + pageSize);
+
+    const pagesCount = Math.ceil(total / pageSize);
+
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+      pagesCount,
+    };
   }
 
   getById(id: number): ServiceItem {

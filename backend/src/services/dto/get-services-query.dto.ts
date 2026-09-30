@@ -3,7 +3,7 @@ import {
   IsEnum,
   IsInt,
   IsOptional,
-  IsString,
+  IsString, Max,
   Min,
 } from 'class-validator';
 
@@ -34,6 +34,7 @@ export class GetServicesQueryDto {
   @Min(0)
   maxPrice?: number;
 
+  // sort
   @IsOptional()
   @IsEnum(ServiceSortBy)
   sortBy?: ServiceSortBy;
@@ -41,4 +42,18 @@ export class GetServicesQueryDto {
   @IsOptional()
   @IsEnum(SortOrder)
   sortOrder?: SortOrder;
+
+  // pagination
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  pageSize?: number;
 }
