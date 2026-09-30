@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateServiceDto } from './dto/create-service.dto.js';
 import { UpdateServiceDto } from './dto/update-service.dto.js';
-import { GetServicesQueryDto } from './dto/get-services-query.dto.js';
+import { GetServicesQueryDto, ServiceSortBy, SortOrder } from './dto/get-services-query.dto.js';
 
 type ServiceItem = {
   id: number;
@@ -33,11 +33,11 @@ export class ServicesService {
 
   // GET
   getAll(query: GetServicesQueryDto): ServiceItem[] {
-    const { search, minPrice, maxPrice } = query;
+    const { search, minPrice, maxPrice, sortBy, sortOrder = SortOrder.Asc } = query;
 
     const normalizedSearch = search?.trim().toLowerCase();
 
-    return this.services.filter((service) => {
+    const filteredServices = this.services.filter((service) => {
       if (normalizedSearch && !service.name.toLowerCase().includes(normalizedSearch)) {
         return false;
       }
@@ -51,6 +51,24 @@ export class ServicesService {
       }
 
       return true;
+    });
+
+    if (!sortBy) {
+      return filteredServices;
+    }
+
+    return filteredServices.sort((a, b) => {
+      let comparison = 0;
+
+      if (sortBy === ServiceSortBy.Price) {
+        comparison = a.price - b.price;
+      }
+
+      if (sortBy === ServiceSortBy.Name) {
+        comparison = a.name.localeCompare(b.name, 'ru');
+      }
+
+      return sortOrder === SortOrder.Desc ? -comparison : comparison;
     });
   }
 
