@@ -14,6 +14,7 @@ import {
 import { ServicesService } from './services.service.js';
 import { CreateServiceDto } from './dto/create-service.dto.js';
 import { UpdateServiceDto } from './dto/update-service.dto.js';
+import { GetServicesQueryDto } from './dto/get-services-query.dto.js';
 
 @Controller('services')
 export class ServicesController {
@@ -21,8 +22,8 @@ export class ServicesController {
 
   // Get
   @Get()
-  getAll(@Query('search') search?: string) {
-    return this.servicesService.getAll(search);
+  getAll(@Query() query: GetServicesQueryDto) {
+    return this.servicesService.getAll(query);
   }
 
   @Get(':id')

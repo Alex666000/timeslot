@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateServiceDto } from './dto/create-service.dto.js';
 import { UpdateServiceDto } from './dto/update-service.dto.js';
+import { GetServicesQueryDto } from './dto/get-services-query.dto.js';
 
 type ServiceItem = {
   id: number;
@@ -31,15 +32,26 @@ export class ServicesService {
   ];
 
   // GET
-  getAll(search?: string): ServiceItem[] {
-    if (!search) {
-      return this.services;
-    }
-    const normalizedSearch = search.trim().toLowerCase();
+  getAll(query: GetServicesQueryDto): ServiceItem[] {
+    const { search, minPrice, maxPrice } = query;
 
-    return this.services.filter((service) =>
-      service.name.toLowerCase().includes(normalizedSearch),
-    );
+    const normalizedSearch = search?.trim().toLowerCase();
+
+    return this.services.filter((service) => {
+      if (normalizedSearch && !service.name.toLowerCase().includes(normalizedSearch)) {
+        return false;
+      }
+
+      if (minPrice !== undefined && service.price < minPrice) {
+        return false;
+      }
+
+      if (maxPrice !== undefined && service.price > maxPrice) {
+        return false;
+      }
+
+      return true;
+    });
   }
 
   getById(id: number): ServiceItem {
