@@ -1,33 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+
+import { DatabaseService } from '../database/database.service.js';
 import { CreateServiceDto } from './dto/create-service.dto.js';
-import { UpdateServiceDto } from './dto/update-service.dto.js';
 import { GetServicesQueryDto, ServiceSortBy, SortOrder } from './dto/get-services-query.dto.js';
+import { UpdateServiceDto } from './dto/update-service.dto.js';
 import type { GetServicesResult, ServiceItem } from './services.types.js';
 
 @Injectable()
 export class ServicesService {
-  private nextId = 4;
+  constructor(private readonly databaseService: DatabaseService) {}
 
-  private readonly services: ServiceItem[] = [
-    {
-      id: 1,
-      name: 'Стрижка',
-      price: 1500,
-    },
-    {
-      id: 2,
-      name: 'Массаж',
-      price: 2500,
-    },
-    {
-      id: 3,
-      name: 'Консультация',
-      price: 3000,
-    },
-  ];
-
-  // GET
-  getAll(query: GetServicesQueryDto): GetServicesResult {
+  async getAll(query: GetServicesQueryDto): Promise<GetServicesResult> {
     const {
       search,
       minPrice,
@@ -38,59 +21,86 @@ export class ServicesService {
       pageSize = 10,
     } = query;
 
-    const normalizedSearch = search?.trim().toLowerCase();
+    const conditions: string[] = [];
+    const values: unknown[] = [];
 
-    const filteredServices = this.services.filter((service) => {
-      if (normalizedSearch && !service.name.toLowerCase().includes(normalizedSearch)) {
-        return false;
-      }
+    const normalizedSearch = search?.trim();
 
-      if (minPrice !== undefined && service.price < minPrice) {
-        return false;
-      }
+    if (normalizedSearch) {
+      values.push(`%${normalizedSearch}%`);
+      conditions.push(`name ILIKE $${values.length}`);
+    }
 
-      if (maxPrice !== undefined && service.price > maxPrice) {
-        return false;
-      }
+    if (minPrice !== undefined) {
+      values.push(minPrice);
+      conditions.push(`price >= $${values.length}`);
+    }
 
-      return true;
-    });
+    if (maxPrice !== undefined) {
+      values.push(maxPrice);
+      conditions.push(`price <= $${values.length}`);
+    }
 
-    // sort
-    const sortedServices = sortBy
-      ? filteredServices.sort((a, b) => {
-          let comparison = 0;
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-          if (sortBy === ServiceSortBy.Price) {
-            comparison = a.price - b.price;
-          }
+    const direction = sortOrder === SortOrder.Desc ? 'DESC' : 'ASC';
 
-          if (sortBy === ServiceSortBy.Name) {
-            comparison = a.name.localeCompare(b.name, 'ru');
-          }
+    let orderBy = 'id ASC';
 
-          return sortOrder === SortOrder.Desc ? -comparison : comparison;
-        })
-      : filteredServices;
+    if (sortBy === ServiceSortBy.Price) {
+      orderBy = `price ${direction}, id ASC`;
+    }
 
-    // pagination
-    const total = sortedServices.length;
+    if (sortBy === ServiceSortBy.Name) {
+      orderBy = `name ${direction}, id ASC`;
+    }
+
+    const countResult = await this.databaseService.query<{ total: number }>(
+      `
+          SELECT COUNT(*) ::int AS total
+          FROM services ${whereClause}
+      `,
+      values,
+    );
+
+    const total = countResult.rows[0].total;
     const offset = (page - 1) * pageSize;
-    const items = sortedServices.slice(offset, offset + pageSize);
 
-    const pagesCount = Math.ceil(total / pageSize);
+    const paginationValues = [...values, pageSize, offset];
+
+    const limitParam = `$${values.length + 1}`;
+    const offsetParam = `$${values.length + 2}`;
+
+    const servicesResult = await this.databaseService.query<ServiceItem>(
+      `
+          SELECT id, name, price
+          FROM services ${whereClause}
+          ORDER BY ${orderBy} LIMIT ${limitParam}
+          OFFSET ${offsetParam}
+      `,
+      paginationValues,
+    );
 
     return {
-      items,
+      items: servicesResult.rows,
       total,
       page,
       pageSize,
-      pagesCount,
+      pagesCount: Math.ceil(total / pageSize),
     };
   }
 
-  getById(id: number): ServiceItem {
-    const service = this.services.find((service) => service.id === id);
+  async getById(id: number): Promise<ServiceItem> {
+    const result = await this.databaseService.query<ServiceItem>(
+      `
+          SELECT id, name, price
+          FROM services
+          WHERE id = $1
+      `,
+      [id],
+    );
+
+    const service = result.rows[0];
 
     if (!service) {
       throw new NotFoundException(`Service with id ${id} not found`);
@@ -99,35 +109,70 @@ export class ServicesService {
     return service;
   }
 
-  // POST
-  create(dto: CreateServiceDto): ServiceItem {
-    const service: ServiceItem = {
-      id: this.nextId++,
-      name: dto.name,
-      price: dto.price,
-    };
-    this.services.push(service);
+  async create(dto: CreateServiceDto): Promise<ServiceItem> {
+    const result = await this.databaseService.query<ServiceItem>(
+      `
+          INSERT INTO services (name, price)
+          VALUES ($1, $2) RETURNING id, name, price
+      `,
+      [dto.name, dto.price],
+    );
 
-    return service;
+    return result.rows[0];
   }
 
-  // PATCH
-  update(id: number, dto: UpdateServiceDto): ServiceItem {
-    const service = this.getById(id);
+  async update(id: number, dto: UpdateServiceDto): Promise<ServiceItem> {
+    const updates: string[] = [];
+    const values: unknown[] = [];
 
-    Object.assign(service, dto);
+    if (dto.name !== undefined) {
+      values.push(dto.name);
+      updates.push(`name = $${values.length}`);
+    }
 
-    return service;
-  }
+    if (dto.price !== undefined) {
+      values.push(dto.price);
+      updates.push(`price = $${values.length}`);
+    }
 
-  // DELETE
-  remove(id: number): void {
-    const index = this.services.findIndex((service) => service.id === id);
+    if (updates.length === 0) {
+      return this.getById(id);
+    }
 
-    if (index === -1) {
+    values.push(id);
+
+    const idParam = `$${values.length}`;
+
+    const result = await this.databaseService.query<ServiceItem>(
+      `
+          UPDATE services
+          SET ${updates.join(', ')}
+          WHERE id = ${idParam} RETURNING id, name, price
+      `,
+      values,
+    );
+
+    const service = result.rows[0];
+
+    if (!service) {
       throw new NotFoundException(`Service with id ${id} not found`);
     }
 
-    this.services.splice(index, 1);
+    return service;
+  }
+
+  async delete(id: number): Promise<void> {
+    const result = await this.databaseService.query<{ id: number }>(
+      `
+          DELETE
+          FROM services
+          WHERE id = $1 RETURNING id
+      `,
+      [id],
+    );
+
+    if (!result.rows[0]) {
+      throw new NotFoundException(`Service with id ${id} not found`);
+    }
   }
 }
