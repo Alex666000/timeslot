@@ -161,13 +161,13 @@ export class ServicesService {
     return service;
   }
 
-  async delete(id: number): Promise<void> {
+  async remove(id: number): Promise<void> {
     const result = await this.databaseService.query<{ id: number }>(
       `
-          DELETE
-          FROM services
-          WHERE id = $1 RETURNING id
-      `,
+      DELETE FROM services
+      WHERE id = $1
+      RETURNING id
+    `,
       [id],
     );
 

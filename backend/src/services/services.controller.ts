@@ -140,7 +140,7 @@ export class ServicesController {
   // Delete
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseIntPipe) id: number): void {
-    this.servicesService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number): Promise<void> {
+    return this.servicesService.remove(id);
   }
 }
